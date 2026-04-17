@@ -1,0 +1,62 @@
+[
+  {
+    "id": "CUST-001",
+    "name": "RetailCorp Boston",
+    "location": { "lat": 42.3601, "lon": -71.0589 },
+    "region": "Northeast"
+  },
+  {
+    "id": "CUST-002",
+    "name": "Tech Hub Miami",
+    "location": { "lat": 25.7617, "lon": -80.1918 },
+    "region": "Southeast"
+  },
+  {
+    "id": "CUST-003",
+    "name": "Commerce Denver",
+    "location": { "lat": 39.7392, "lon": -104.9903 },
+    "region": "Midwest"
+  },
+  {
+    "id": "CUST-004",
+    "name": "MegaMart Dallas",
+    "location": { "lat": 32.7767, "lon": -96.7970 },
+    "region": "South"
+  },
+  {
+    "id": "CUST-005",
+    "name": "LocalMart Phoenix",
+    "location": { "lat": 33.4484, "lon": -112.0742 },
+    "region": "Southwest"
+  },
+  {
+    "id": "CUST-006",
+    "name": "ShopChain San Francisco",
+    "location": { "lat": 37.7749, "lon": -122.4194 },
+    "region": "West"
+  },
+  {
+    "id": "CUST-007",
+    "name": "Express Portland",
+    "location": { "lat": 45.5152, "lon": -122.6784 },
+    "region": "Northwest"
+  },
+  {
+    "id": "CUST-008",
+    "name": "BigBox Minneapolis",
+    "location": { "lat": 44.9778, "lon": -93.2650 },
+    "region": "Upper Midwest"
+  },
+  {
+    "id": "CUST-009",
+    "name": "CityStore Houston",
+    "location": { "lat": 29.7604, "lon": -95.3698 },
+    "region": "South"
+  },
+  {
+    "id": "CUST-010",
+    "name": "QuickStop Oakland",
+    "location": { "lat": 37.8044, "lon": -122.2712 },
+    "region": "West"
+  }
+]

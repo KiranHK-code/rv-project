@@ -1,0 +1,77 @@
+[
+  {
+    "id": "WH-NYC",
+    "name": "New York Central Warehouse",
+    "location": { "lat": 40.7128, "lon": -74.0060 },
+    "capacity": 50000,
+    "currentStock": {
+      "PROD-001": 8000,
+      "PROD-002": 6500,
+      "PROD-003": 4200,
+      "PROD-004": 7100,
+      "PROD-005": 3200
+    },
+    "operationalCostPerDay": 2500,
+    "failureRate": 0.01
+  },
+  {
+    "id": "WH-LA",
+    "name": "Los Angeles Distribution Center",
+    "location": { "lat": 34.0522, "lon": -118.2437 },
+    "capacity": 60000,
+    "currentStock": {
+      "PROD-001": 12000,
+      "PROD-002": 9000,
+      "PROD-003": 6500,
+      "PROD-004": 8000,
+      "PROD-005": 5800
+    },
+    "operationalCostPerDay": 2800,
+    "failureRate": 0.008
+  },
+  {
+    "id": "WH-CHI",
+    "name": "Chicago Midwest Hub",
+    "location": { "lat": 41.8781, "lon": -87.6298 },
+    "capacity": 45000,
+    "currentStock": {
+      "PROD-001": 6500,
+      "PROD-002": 5200,
+      "PROD-003": 7000,
+      "PROD-004": 4500,
+      "PROD-005": 6200
+    },
+    "operationalCostPerDay": 2200,
+    "failureRate": 0.009
+  },
+  {
+    "id": "WH-ATL",
+    "name": "Atlanta Southeast Warehouse",
+    "location": { "lat": 33.7490, "lon": -84.3880 },
+    "capacity": 40000,
+    "currentStock": {
+      "PROD-001": 5000,
+      "PROD-002": 6800,
+      "PROD-003": 5200,
+      "PROD-004": 6100,
+      "PROD-005": 4200
+    },
+    "operationalCostPerDay": 2000,
+    "failureRate": 0.01
+  },
+  {
+    "id": "WH-SEA",
+    "name": "Seattle West Coast Hub",
+    "location": { "lat": 47.6062, "lon": -122.3321 },
+    "capacity": 35000,
+    "currentStock": {
+      "PROD-001": 4500,
+      "PROD-002": 3800,
+      "PROD-003": 5500,
+      "PROD-004": 3200,
+      "PROD-005": 4100
+    },
+    "operationalCostPerDay": 1800,
+    "failureRate": 0.007
+  }
+]
