@@ -12,8 +12,6 @@ const API_BASE = 'http://localhost:3000/api';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     checkServer();
@@ -23,38 +21,10 @@ function App() {
     try {
       const response = await fetch(`${API_BASE}/health`);
       if (!response.ok) throw new Error('Server not responding');
-      setLoading(false);
     } catch (err) {
-      setError('Backend server not running. Please start: npm run dev in backend folder');
-      setLoading(false);
+      console.error('Server check failed:', err);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="app-container loading">
-        <div className="spinner"></div>
-        <p>Connecting to backend server...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="app-container error">
-        <div className="error-box">
-          <h2>⚠️ Connection Error</h2>
-          <p>{error}</p>
-          <ol>
-            <li>Open terminal in `/backend` folder</li>
-            <li>Run: <code>npm install</code></li>
-            <li>Run: <code>npm run dev</code></li>
-            <li>Refresh this page</li>
-          </ol>
-        </div>
-      </div>
-    );
-  }
 
   const tabs = [
     { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },

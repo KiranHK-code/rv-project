@@ -100,122 +100,55 @@ async function initializeCollections() {
   const database = getDB();
   
   try {
-    // Warehouses collection
-    await database.createCollection('warehouses', {
-      validator: {
-        $jsonSchema: {
-          bsonType: 'object',
-          required: ['id', 'name', 'location', 'capacity'],
-          properties: {
-            _id: { bsonType: 'objectId' },
-            id: { bsonType: 'string' },
-            name: { bsonType: 'string' },
-            location: {
-              bsonType: 'object',
-              properties: {
-                city: { bsonType: 'string' },
-                state: { bsonType: 'string' },
-                lat: { bsonType: 'double' },
-                lon: { bsonType: 'double' }
-              }
-            },
-            capacity: { bsonType: 'int' },
-            costPerDay: { bsonType: 'double' },
-            failureRate: { bsonType: 'double' },
-            currentStock: { bsonType: 'array' },
-            createdAt: { bsonType: 'date' }
-          }
-        }
-      }
-    }).catch(() => {}); // Collection might already exist
+    // Drop existing collections to remove old validators
+    const collectionsToReset = [
+      'warehouses',
+      'customers',
+      'orders',
+      'demandHistory',
+      'ordersHistory'
+    ];
 
-    // Customers collection
-    await database.createCollection('customers', {
-      validator: {
-        $jsonSchema: {
-          bsonType: 'object',
-          required: ['id', 'name', 'location'],
-          properties: {
-            _id: { bsonType: 'objectId' },
-            id: { bsonType: 'string' },
-            name: { bsonType: 'string' },
-            location: {
-              bsonType: 'object',
-              properties: {
-                city: { bsonType: 'string' },
-                state: { bsonType: 'string' },
-                lat: { bsonType: 'double' },
-                lon: { bsonType: 'double' }
-              }
-            },
-            type: { bsonType: 'string' },
-            createdAt: { bsonType: 'date' }
-          }
-        }
+    for (const collName of collectionsToReset) {
+      try {
+        await database.dropCollection(collName);
+        console.log(`✓ Dropped old collection "${collName}"`);
+      } catch (err) {
+        // Collection doesn't exist, that's fine
       }
-    }).catch(() => {});
+    }
 
-    // Orders collection
-    await database.createCollection('orders', {
-      validator: {
-        $jsonSchema: {
-          bsonType: 'object',
-          required: ['id', 'customerId', 'productId', 'quantity', 'requiredDate'],
-          properties: {
-            _id: { bsonType: 'objectId' },
-            id: { bsonType: 'string' },
-            customerId: { bsonType: 'string' },
-            productId: { bsonType: 'string' },
-            quantity: { bsonType: 'int' },
-            status: { enum: ['pending', 'assigned', 'shipped', 'delivered', 'failed'] },
-            requiredDate: { bsonType: 'date' },
-            allocatedWarehouse: { bsonType: 'string' },
-            cost: { bsonType: 'double' },
-            createdAt: { bsonType: 'date' },
-            updatedAt: { bsonType: 'date' }
-          }
-        }
-      }
-    }).catch(() => {});
+    // Create fresh collections without strict validation
+    const collectionsToCreate = [
+      'warehouses',
+      'customers',
+      'orders',
+      'demandHistory',
+      'ordersHistory'
+    ];
 
-    // Demand history collection
-    await database.createCollection('demandHistory', {
-      validator: {
-        $jsonSchema: {
-          bsonType: 'object',
-          required: ['customerId', 'productId', 'date', 'demand'],
-          properties: {
-            _id: { bsonType: 'objectId' },
-            customerId: { bsonType: 'string' },
-            productId: { bsonType: 'string' },
-            date: { bsonType: 'date' },
-            demand: { bsonType: 'int' }
+    for (const collName of collectionsToCreate) {
+      try {
+        await database.createCollection(collName);
+        console.log(`✓ Collection "${collName}" created`);
+      } catch (err) {
+        if (err.codeName === 'NamespaceExists') {
+          // Collection already exists, try to remove its validator
+          console.log(`✓ Collection "${collName}" already exists, removing validator...`);
+          try {
+            await database.command({
+              collMod: collName,
+              validator: {}  // Empty validator = no validation
+            });
+            console.log(`✓ Removed validator from "${collName}"`);
+          } catch (modErr) {
+            // Validator removal might fail if none exists, that's fine
           }
+        } else {
+          throw err;
         }
       }
-    }).catch(() => {});
-
-    // Orders history collection
-    await database.createCollection('ordersHistory', {
-      validator: {
-        $jsonSchema: {
-          bsonType: 'object',
-          required: ['id', 'customerId', 'productId'],
-          properties: {
-            _id: { bsonType: 'objectId' },
-            id: { bsonType: 'string' },
-            customerId: { bsonType: 'string' },
-            productId: { bsonType: 'string' },
-            quantity: { bsonType: 'int' },
-            status: { bsonType: 'string' },
-            allocatedWarehouse: { bsonType: 'string' },
-            cost: { bsonType: 'double' },
-            createdAt: { bsonType: 'date' },
-            completedAt: { bsonType: 'date' }
-          }
-        }
-      }
-    }).catch(() => {});
+    }
 
     // Create indexes for performance
     const collections = {

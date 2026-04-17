@@ -35,54 +35,79 @@ class MongoDataManager {
    */
   async loadInitialDataFromJSON() {
     try {
-      const dataDir = path.join(__dirname, '../../backend/data');
+      const dataDir = path.join(__dirname, '../data');
+      console.log(`📁 Loading data from: ${dataDir}`);
       
-      // Load warehouses
+      // Load warehouses (JSON is a direct array, not wrapped)
+      console.log('📦 Loading warehouses...');
       const warehousesData = JSON.parse(
         fs.readFileSync(path.join(dataDir, 'warehouses.json'), 'utf8')
       );
-      if (warehousesData.warehouses) {
+      console.log(`  Found ${Array.isArray(warehousesData) ? warehousesData.length : 0} warehouses in JSON`);
+      
+      if (Array.isArray(warehousesData) && warehousesData.length > 0) {
         await this.db.collection('warehouses').deleteMany({});
-        const warehousesToInsert = warehousesData.warehouses.map(w => ({
+        const warehousesToInsert = warehousesData.map(w => ({
           ...w,
           createdAt: new Date()
         }));
-        await this.db.collection('warehouses').insertMany(warehousesToInsert);
-        console.log(`✓ Loaded ${warehousesData.warehouses.length} warehouses`);
+        const whResult = await this.db.collection('warehouses').insertMany(warehousesToInsert);
+        console.log(`✓ Inserted ${whResult.insertedCount} warehouses`);
       }
 
-      // Load customers
+      // Load customers (JSON is a direct array, not wrapped)
+      console.log('👥 Loading customers...');
       const customersData = JSON.parse(
         fs.readFileSync(path.join(dataDir, 'customers.json'), 'utf8')
       );
-      if (customersData.customers) {
+      console.log(`  Found ${Array.isArray(customersData) ? customersData.length : 0} customers in JSON`);
+      
+      if (Array.isArray(customersData) && customersData.length > 0) {
         await this.db.collection('customers').deleteMany({});
-        const customersToInsert = customersData.customers.map(c => ({
+        const customersToInsert = customersData.map(c => ({
           ...c,
           createdAt: new Date()
         }));
-        await this.db.collection('customers').insertMany(customersToInsert);
-        console.log(`✓ Loaded ${customersData.customers.length} customers`);
+        const custResult = await this.db.collection('customers').insertMany(customersToInsert);
+        console.log(`✓ Inserted ${custResult.insertedCount} customers`);
       }
 
-      // Load demand history
+      // Load demand history (JSON is an object with customer IDs as keys)
+      console.log('📊 Loading demand history...');
       const demandData = JSON.parse(
         fs.readFileSync(path.join(dataDir, 'demand_history.json'), 'utf8')
       );
-      if (demandData.demandHistory) {
+      if (typeof demandData === 'object' && !Array.isArray(demandData)) {
         await this.db.collection('demandHistory').deleteMany({});
-        const demandToInsert = demandData.demandHistory.map(d => ({
-          ...d,
-          date: new Date(d.date)
-        }));
-        await this.db.collection('demandHistory').insertMany(demandToInsert);
-        console.log(`✓ Loaded ${demandData.demandHistory.length} demand history records`);
+        const demandRecords = [];
+        for (const [customerId, productData] of Object.entries(demandData)) {
+          for (const [productId, quantities] of Object.entries(productData)) {
+            if (Array.isArray(quantities)) {
+              quantities.forEach((quantity, dayIndex) => {
+                demandRecords.push({
+                  customerId,
+                  productId,
+                  quantity,
+                  day: dayIndex,
+                  createdAt: new Date()
+                });
+              });
+            }
+          }
+        }
+        if (demandRecords.length > 0) {
+          const demandResult = await this.db.collection('demandHistory').insertMany(demandRecords);
+          console.log(`✓ Inserted ${demandResult.insertedCount} demand history records`);
+        } else {
+          console.log('  No demand records to insert');
+        }
       }
 
       console.log('✅ Initial data loaded successfully');
       
     } catch (error) {
-      console.error('Error loading initial data:', error.message);
+      console.error('❌ Error loading initial data:', error.message);
+      console.error('Stack:', error.stack);
       throw error;
     }
   }

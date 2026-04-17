@@ -105,20 +105,9 @@ app.use('/api/', (req, res, next) => {
   next();
 });
 
-// Mount route modules
-const orderRoutes = require('./routes/orders');
-const forecastRoutes = require('./routes/forecast');
-const optimizeRoutes = require('./routes/optimize');
-const allocateRoutes = require('./routes/allocate');
-const disruptionRoutes = require('./routes/disruption');
-const dashboardRoutes = require('./routes/dashboard');
-
-app.use('/api/orders', orderRoutes);
-app.use('/api/forecast', forecastRoutes);
-app.use('/api/optimize', optimizeRoutes);
-app.use('/api/allocate', allocateRoutes);
-app.use('/api/disruption', disruptionRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+// Routes will be mounted after dataManager is initialized (in startServer)
+let routesInitialized = false;
+let errorHandlersInitialized = false;
 
 // ============ STATISTICS ENDPOINT ============
 app.get('/api/statistics', async (req, res) => {
@@ -146,24 +135,6 @@ app.get('/api/data', async (req, res) => {
   }
 });
 
-// ============ ERROR HANDLING ============
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: err.message,
-    timestamp: new Date().toISOString()
-  });
-});
-
-app.use((req, res) => {
-  res.status(404).json({
-    error: 'Not found',
-    path: req.path,
-    method: req.method
-  });
-});
-
 // ============ SERVER STARTUP ============
 const PORT = config.port;
 
@@ -189,6 +160,51 @@ async function startServer() {
 
     // Get statistics
     const stats = await dataManager.getStatistics();
+
+    // Initialize routes after dataManager is ready
+    if (!routesInitialized) {
+      const orderRoutes = require('./routes/orders');
+      const forecastRoutes = require('./routes/forecast');
+      const optimizeRoutes = require('./routes/optimize');
+      const allocateRoutes = require('./routes/allocate');
+      const disruptionRoutes = require('./routes/disruption');
+      const dashboardRoutes = require('./routes/dashboard');
+
+      const kpiTracker = new KPITracker();
+      const warehouses = await dataManager.getWarehouses();
+      const customers = await dataManager.getCustomers();
+      const distanceMatrix = buildDistanceMatrix(warehouses, customers);
+
+      app.use('/api/orders', orderRoutes(dataManager, kpiTracker, distanceMatrix, config));
+      app.use('/api/forecast', forecastRoutes(dataManager, kpiTracker, distanceMatrix, config));
+      app.use('/api/optimize', optimizeRoutes(dataManager, kpiTracker, distanceMatrix, config));
+      app.use('/api/allocate', allocateRoutes(dataManager, kpiTracker, distanceMatrix, config));
+      app.use('/api/disruption', disruptionRoutes(dataManager, kpiTracker, distanceMatrix, config));
+      app.use('/api/dashboard', dashboardRoutes(dataManager, kpiTracker, distanceMatrix, config));
+      
+      routesInitialized = true;
+    }
+
+    if (!errorHandlersInitialized) {
+      app.use((err, req, res, next) => {
+        console.error('Error:', err);
+        res.status(500).json({
+          error: 'Internal server error',
+          message: err.message,
+          timestamp: new Date().toISOString()
+        });
+      });
+
+      app.use((req, res) => {
+        res.status(404).json({
+          error: 'Not found',
+          path: req.path,
+          method: req.method
+        });
+      });
+
+      errorHandlersInitialized = true;
+    }
 
     // Start Express server
     const server = app.listen(PORT, () => {
