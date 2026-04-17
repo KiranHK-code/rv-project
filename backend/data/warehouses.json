@@ -1,8 +1,8 @@
 [
   {
     "id": "WH-NYC",
-    "name": "New York Central Warehouse",
-    "location": { "lat": 40.7128, "lon": -74.0060 },
+    "name": "Bangalore Warehouse",
+    "location": { "lat": 12.9716, "lon": 77.5946 },
     "capacity": 50000,
     "currentStock": {
       "PROD-001": 8000,
@@ -16,8 +16,8 @@
   },
   {
     "id": "WH-LA",
-    "name": "Los Angeles Distribution Center",
-    "location": { "lat": 34.0522, "lon": -118.2437 },
+    "name": "Mandya Distribution Center",
+    "location": { "lat": 12.5218, "lon": 76.8950 },
     "capacity": 60000,
     "currentStock": {
       "PROD-001": 12000,
@@ -31,8 +31,8 @@
   },
   {
     "id": "WH-CHI",
-    "name": "Chicago Midwest Hub",
-    "location": { "lat": 41.8781, "lon": -87.6298 },
+    "name": "Kengeri Hub",
+    "location": { "lat": 13.0827, "lon": 77.5697 },
     "capacity": 45000,
     "currentStock": {
       "PROD-001": 6500,
@@ -46,8 +46,8 @@
   },
   {
     "id": "WH-ATL",
-    "name": "Atlanta Southeast Warehouse",
-    "location": { "lat": 33.7490, "lon": -84.3880 },
+    "name": "Mysore Warehouse",
+    "location": { "lat": 12.3054, "lon": 76.6452 },
     "capacity": 40000,
     "currentStock": {
       "PROD-001": 5000,
@@ -61,8 +61,8 @@
   },
   {
     "id": "WH-SEA",
-    "name": "Seattle West Coast Hub",
-    "location": { "lat": 47.6062, "lon": -122.3321 },
+    "name": "Tumkur Hub",
+    "location": { "lat": 13.3409, "lon": 75.7600 },
     "capacity": 35000,
     "currentStock": {
       "PROD-001": 4500,

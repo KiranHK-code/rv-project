@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
 import Dashboard from './components/Dashboard';
 import WarehousesPanel from './components/WarehousesPanel';
@@ -7,6 +7,7 @@ import ForecastPanel from './components/ForecastPanel';
 import DisruptionPanel from './components/DisruptionPanel';
 import KPIMetrics from './components/KPIMetrics';
 import AlertsPanel from './components/AlertsPanel';
+import GMap from './components/gmap';
 
 const API_BASE = 'http://localhost:3000/api';
 
@@ -27,21 +28,22 @@ function App() {
   };
 
   const tabs = [
-    { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },
-    { id: 'warehouses', label: '🏢 Warehouses', icon: '🏢' },
-    { id: 'orders', label: '📦 Orders', icon: '📦' },
-    { id: 'forecast', label: '📈 Forecast', icon: '📈' },
-    { id: 'kpis', label: '📊 KPIs', icon: '📊' },
-    { id: 'disruption', label: '⚠️ Disruptions', icon: '⚠️' },
-    { id: 'alerts', label: '🔔 Alerts', icon: '🔔' }
+    { id: 'dashboard', label: 'Dashboard', icon: 'Dashboard' },
+    { id: 'warehouses', label: 'Warehouses', icon: 'Warehouses' },
+    { id: 'orders', label: 'Orders', icon: 'Orders' },
+    { id: 'forecast', label: 'Forecast', icon: 'Forecast' },
+    { id: 'kpis', label: 'KPIs', icon: 'KPIs' },
+    { id: 'map', label: 'Map', icon: 'Map' },
+    { id: 'disruption', label: 'Disruptions', icon: 'Disruptions' },
+    { id: 'alerts', label: 'Alerts', icon: 'Alerts' }
   ];
 
   return (
     <div className="app-container">
       <header className="app-header">
         <div className="header-content">
-          <h1>🚚 Supply Chain Logistics & Optimization System</h1>
-          <p>AI-Powered Inventory, Routing & Disruption Management</p>
+          <h1>Supply Chain Logistics and Optimization System</h1>
+          <p>AI-Powered Inventory, Routing and Disruption Management</p>
         </div>
         <div className="header-status">
           <span className="status-indicator online"></span>
@@ -50,7 +52,7 @@ function App() {
       </header>
 
       <nav className="app-nav">
-        {tabs.map(tab => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             className={`nav-button ${activeTab === tab.id ? 'active' : ''}`}
@@ -58,7 +60,7 @@ function App() {
             title={tab.label}
           >
             <span className="nav-icon">{tab.icon}</span>
-            <span className="nav-label">{tab.label.split(' ').pop()}</span>
+            <span className="nav-label">{tab.label}</span>
           </button>
         ))}
       </nav>
@@ -69,13 +71,14 @@ function App() {
         {activeTab === 'orders' && <OrdersPanel apiBase={API_BASE} />}
         {activeTab === 'forecast' && <ForecastPanel apiBase={API_BASE} />}
         {activeTab === 'kpis' && <KPIMetrics apiBase={API_BASE} />}
+        {activeTab === 'map' && <GMap apiBase={API_BASE} />}
         {activeTab === 'disruption' && <DisruptionPanel apiBase={API_BASE} />}
         {activeTab === 'alerts' && <AlertsPanel apiBase={API_BASE} />}
       </main>
 
       <footer className="app-footer">
-        <p>© 2024 Supply Chain Logistics System | Powered by AI & Optimization Algorithms</p>
-        <p>Demand Forecasting • Inventory Optimization • Dynamic Routing • Disruption Resilience</p>
+        <p>2024 Supply Chain Logistics System | Powered by AI and Optimization Algorithms</p>
+        <p>Demand Forecasting | Inventory Optimization | Dynamic Routing | Disruption Resilience</p>
       </footer>
     </div>
   );
