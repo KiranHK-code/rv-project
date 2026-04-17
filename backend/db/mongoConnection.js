@@ -5,7 +5,7 @@ const { MongoClient } = require('mongodb');
 
 // Connection configuration following best practices for demo/hackathon environments
 const mongoConfig = {
-  url: process.env.MONGODB_URL || 'mongodb://localhost:27017',
+  url: process.env.MONGODB_URL || 'mongodb+srv://kiranhkkiranhk60_db_user:kiranhk%40123@cluster0.3lmsm1a.mongodb.net/logistics_optimization',
   dbName: process.env.DB_NAME || 'logistics_optimization',
   
   // Connection pool optimized for development (small pool, quick responses)
@@ -100,11 +100,10 @@ async function initializeCollections() {
   const database = getDB();
   
   try {
-    // Drop existing collections to remove old validators
+    // Drop existing collections to remove old validators (but NOT orders - preserve user data)
     const collectionsToReset = [
       'warehouses',
       'customers',
-      'orders',
       'demandHistory',
       'ordersHistory'
     ];

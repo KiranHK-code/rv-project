@@ -46,7 +46,7 @@ export default function GMap({ apiBase }) {
 
   const mapElementRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const markerRef = useRef(null);
+  const markersRef = useRef([]);
 
   useEffect(() => {
     const fetchMapData = async () => {
@@ -156,38 +156,91 @@ export default function GMap({ apiBase }) {
   const selectedLocation = selectedOptions.find((item) => item.id === selectedId) || null;
 
   useEffect(() => {
-    if (!mapReady || !selectedLocation?.location || !mapElementRef.current || !window.google?.maps) {
+    if (!mapReady || !mapElementRef.current || !window.google?.maps) {
       return;
     }
 
-    const center = {
-      lat: selectedLocation.location.lat,
-      lng: selectedLocation.location.lon
-    };
+    // Clear existing markers
+    markersRef.current.forEach((marker) => marker.setMap(null));
+    markersRef.current = [];
 
-    if (!mapInstanceRef.current) {
-      mapInstanceRef.current = new window.google.maps.Map(mapElementRef.current, {
-        center,
-        zoom: 12,
-        mapTypeControl: true,
-        streetViewControl: true,
-        fullscreenControl: true
+    if (selectedType === 'warehouse' && warehouses.length > 0) {
+      // Show all warehouse markers
+      const bounds = new window.google.maps.LatLngBounds();
+      
+      warehouses.forEach((warehouse) => {
+        const position = {
+          lat: warehouse.location.lat,
+          lng: warehouse.location.lon
+        };
+
+        const marker = new window.google.maps.Marker({
+          position,
+          map: mapInstanceRef.current,
+          title: warehouse.name,
+          label: warehouse.name.charAt(0).toUpperCase()
+        });
+
+        const infoWindow = new window.google.maps.InfoWindow({
+          content: `<div style="padding: 8px;">
+            <strong>${warehouse.name}</strong><br/>
+            Capacity: ${warehouse.capacity}<br/>
+            Stock: ${Object.values(warehouse.currentStock).reduce((a, b) => a + b, 0)}
+          </div>`
+        });
+
+        marker.addListener('click', () => {
+          infoWindow.open(mapInstanceRef.current, marker);
+        });
+
+        markersRef.current.push(marker);
+        bounds.extend(position);
       });
-    } else {
-      mapInstanceRef.current.setCenter(center);
-      mapInstanceRef.current.setZoom(12);
-    }
 
-    if (markerRef.current) {
-      markerRef.current.setMap(null);
-    }
+      if (!mapInstanceRef.current) {
+        const center = {
+          lat: warehouses[0].location.lat,
+          lng: warehouses[0].location.lon
+        };
+        mapInstanceRef.current = new window.google.maps.Map(mapElementRef.current, {
+          center,
+          zoom: 12,
+          mapTypeControl: true,
+          streetViewControl: true,
+          fullscreenControl: true
+        });
+      }
 
-    markerRef.current = new window.google.maps.Marker({
-      position: center,
-      map: mapInstanceRef.current,
-      title: selectedLocation.name
-    });
-  }, [mapReady, selectedLocation]);
+      mapInstanceRef.current.fitBounds(bounds);
+    } else if (selectedLocation?.location) {
+      // Show single marker for other types
+      const center = {
+        lat: selectedLocation.location.lat,
+        lng: selectedLocation.location.lon
+      };
+
+      if (!mapInstanceRef.current) {
+        mapInstanceRef.current = new window.google.maps.Map(mapElementRef.current, {
+          center,
+          zoom: 12,
+          mapTypeControl: true,
+          streetViewControl: true,
+          fullscreenControl: true
+        });
+      } else {
+        mapInstanceRef.current.setCenter(center);
+        mapInstanceRef.current.setZoom(12);
+      }
+
+      const marker = new window.google.maps.Marker({
+        position: center,
+        map: mapInstanceRef.current,
+        title: selectedLocation.name
+      });
+
+      markersRef.current.push(marker);
+    }
+  }, [mapReady, selectedLocation, selectedType, warehouses]);
 
   if (loading) {
     return (
