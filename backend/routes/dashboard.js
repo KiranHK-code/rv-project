@@ -4,64 +4,88 @@ const express = require('express');
 const router = express.Router();
 
 module.exports = (dataManager, kpiTracker, config) => {
+  async function getAverageDemandByProduct(customers, productId) {
+    const histories = await Promise.all(
+      customers.map((customer) => dataManager.getDemandHistory(customer.id, productId))
+    );
+
+    const dailyAverages = histories
+      .filter((history) => Array.isArray(history) && history.length > 0)
+      .map((history) => history.slice(-7).reduce((sum, value) => sum + value, 0) / Math.min(history.length, 7));
+
+    if (dailyAverages.length === 0) {
+      return 0;
+    }
+
+    return dailyAverages.reduce((sum, value) => sum + value, 0);
+  }
+
   /**
    * Get comprehensive dashboard data
    */
-  router.get('/', (req, res) => {
-    const totalStock = dataManager.warehouses.reduce((sum, w) => {
-      return sum + Object.values(w.currentStock).reduce((a, b) => a + b, 0);
-    }, 0);
+  router.get('/', async (req, res) => {
+    try {
+      const warehouses = await dataManager.getWarehouses();
+      const orders = await dataManager.getOrders();
+      const customers = await dataManager.getCustomers();
 
-    const totalCapacity = dataManager.warehouses.reduce((sum, w) => sum + w.capacity, 0);
+      const totalStock = warehouses.reduce((sum, w) => {
+        return sum + Object.values(w.currentStock || {}).reduce((a, b) => a + b, 0);
+      }, 0);
 
-    const orders = dataManager.orders;
-    const pendingOrders = orders.filter(o => o.status === 'pending');
-    const assignedOrders = orders.filter(o => o.status === 'assigned');
+      const totalCapacity = warehouses.reduce((sum, w) => sum + (w.capacity || 0), 0);
 
-    const dashboardData = {
-      timestamp: new Date().toISOString(),
-      summary: {
-        systemStatus: 'operational',
-        activeWarehouses: dataManager.warehouses.length,
-        registeredCustomers: dataManager.customers.length,
-        totalOrders: orders.length
-      },
-      inventory: {
-        totalStock,
-        totalCapacity,
-        utilizationPercent: ((totalStock / totalCapacity) * 100).toFixed(2),
-        warehouseDetails: dataManager.warehouses.map(w => {
-          const stock = Object.values(w.currentStock).reduce((a, b) => a + b, 0);
-          return {
-            id: w.id,
-            name: w.name,
-            location: w.location,
-            stock,
-            capacity: w.capacity,
-            utilization: ((stock / w.capacity) * 100).toFixed(2),
-            lowStockAlert: stock < (w.capacity * 0.2)
-          };
-        })
-      },
-      orders: {
-        pending: pendingOrders.length,
-        assigned: assignedOrders.length,
-        shipped: orders.filter(o => o.status === 'shipped').length,
-        delivered: orders.filter(o => o.status === 'delivered').length,
-        failed: orders.filter(o => o.status === 'failed').length
-      },
-      allocation: {
-        totalCost: assignedOrders.reduce((sum, o) => sum + (o.route?.cost || 0), 0).toFixed(2),
-        totalCO2: assignedOrders.reduce((sum, o) => sum + (o.route?.co2Emissions || 0), 0).toFixed(2),
-        avgDeliveryDays: assignedOrders.length > 0 ?
-          (assignedOrders.reduce((sum, o) => sum + (o.route?.deliveryDays || 0), 0) / assignedOrders.length).toFixed(2) : 0
-      },
-      kpis: kpiTracker.getDashboardMetrics(dataManager.warehouses, orders),
-      disruptions: kpiTracker.getDisruptionStats(),
-      alerts: generateAlerts(dataManager, kpiTracker)
-    };
+      const pendingOrders = orders.filter(o => o.status === 'pending');
+      const assignedOrders = orders.filter(o => o.status === 'assigned');
 
-    res.json(dashboardData);
+      const dashboardData = {
+        timestamp: new Date().toISOString(),
+        summary: {
+          systemStatus: 'operational',
+          activeWarehouses: warehouses.length,
+          registeredCustomers: customers.length,
+          totalOrders: orders.length
+        },
+        inventory: {
+          totalStock,
+          totalCapacity,
+          utilizationPercent: ((totalStock / totalCapacity) * 100).toFixed(2),
+          warehouseDetails: warehouses.map(w => {
+            const stock = Object.values(w.currentStock || {}).reduce((a, b) => a + b, 0);
+            return {
+              id: w.id,
+              name: w.name,
+              location: w.location,
+              stock,
+              capacity: w.capacity,
+              utilization: ((stock / w.capacity) * 100).toFixed(2),
+              lowStockAlert: stock < (w.capacity * 0.2)
+            };
+          })
+        },
+        orders: {
+          pending: pendingOrders.length,
+          assigned: assignedOrders.length,
+          shipped: orders.filter(o => o.status === 'shipped').length,
+          delivered: orders.filter(o => o.status === 'delivered').length,
+          failed: orders.filter(o => o.status === 'failed').length
+        },
+        allocation: {
+          totalCost: assignedOrders.reduce((sum, o) => sum + (o.route?.cost || 0), 0).toFixed(2),
+          totalCO2: assignedOrders.reduce((sum, o) => sum + (o.route?.co2Emissions || 0), 0).toFixed(2),
+          avgDeliveryDays: assignedOrders.length > 0 ?
+            (assignedOrders.reduce((sum, o) => sum + (o.route?.deliveryDays || 0), 0) / assignedOrders.length).toFixed(2) : 0
+        },
+        kpis: kpiTracker.getDashboardMetrics(warehouses, orders),
+        disruptions: kpiTracker.getDisruptionStats(),
+        alerts: await generateAlerts(warehouses, orders, customers, kpiTracker)
+      };
+
+      res.json(dashboardData);
+    } catch (error) {
+      console.error('Dashboard error:', error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   /**
@@ -254,28 +278,36 @@ module.exports = (dataManager, kpiTracker, config) => {
     };
   }
 
-  function generateAlerts(dataManager, kpiTracker) {
+  /**
+   * Generate alerts based on warehouse and order data
+   */
+  async function generateAlerts(warehouses, orders, customers, kpiTracker) {
     const alerts = [];
 
-    // Low stock alerts
-    for (const warehouse of dataManager.warehouses) {
-      const stock = Object.values(warehouse.currentStock).reduce((a, b) => a + b, 0);
-      if (stock < (warehouse.capacity * 0.15)) {
-        alerts.push({
-          id: 'ALERT-' + Math.random().toString(36).substring(7),
-          severity: 'critical',
-          type: 'LOW_STOCK',
-          title: 'Critical Stock Level',
-          message: `${warehouse.name} is running low on inventory`,
-          warehouse: warehouse.id,
-          action: 'Plan reorder immediately',
-          timestamp: new Date().toISOString()
-        });
+    // Product-level stockout alerts
+    for (const warehouse of warehouses) {
+      for (const [productId, stock] of Object.entries(warehouse.currentStock || {})) {
+        const avgDailyDemand = await getAverageDemandByProduct(customers, productId);
+        const daysOfCover = avgDailyDemand > 0 ? stock / avgDailyDemand : null;
+
+        if (daysOfCover !== null && daysOfCover < 3) {
+          alerts.push({
+            id: 'ALERT-' + Math.random().toString(36).substring(7),
+            severity: daysOfCover < 1.5 ? 'critical' : 'high',
+            type: 'STOCKOUT_RISK',
+            title: 'Predicted Stockout Risk',
+            message: `${warehouse.name} has only ${daysOfCover.toFixed(1)} days of cover left for ${productId}`,
+            warehouse: warehouse.id,
+            productId,
+            action: 'Replenish or reroute inventory before the next delayed delivery window',
+            timestamp: new Date().toISOString()
+          });
+        }
       }
     }
 
     // High pending orders
-    const pending = dataManager.orders.filter(o => o.status === 'pending');
+    const pending = orders.filter(o => o.status === 'pending');
     if (pending.length > 25) {
       alerts.push({
         id: 'ALERT-' + Math.random().toString(36).substring(7),
@@ -302,6 +334,41 @@ module.exports = (dataManager, kpiTracker, config) => {
         action: 'Review allocation strategy',
         timestamp: new Date().toISOString()
       });
+    }
+
+    // Delivery risk alerts
+    for (const order of orders.filter((item) => item.route)) {
+      const expectedDeliveryDate = new Date(
+        order.route.expectedDeliveryDate || order.requiredDate || order.orderedDate || Date.now()
+      );
+      const requiredDate = new Date(order.requiredDate);
+
+      if (!Number.isNaN(requiredDate.getTime()) && expectedDeliveryDate.getTime() > requiredDate.getTime()) {
+        alerts.push({
+          id: 'ALERT-' + Math.random().toString(36).substring(7),
+          severity: 'high',
+          type: 'DELIVERY_DELAY_RISK',
+          title: 'Order Delay Risk',
+          message: `${order.id} is projected to arrive later than required for ${order.productId}`,
+          orderId: order.id,
+          action: 'Review disruption panel and switch to the best alternate route',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const lastDisruption = Array.isArray(order.disruptions) ? order.disruptions.slice(-1)[0] : null;
+      if (lastDisruption?.disruptionType === 'SHIPMENT_DELAY' || lastDisruption?.disruptionType === 'ROUTE_BLOCKED') {
+        alerts.push({
+          id: 'ALERT-' + Math.random().toString(36).substring(7),
+          severity: 'warning',
+          type: 'ACTIVE_DISRUPTION',
+          title: 'Active Delivery Disruption',
+          message: `${order.id} has an active ${lastDisruption.disruptionType.toLowerCase().replace('_', ' ')}`,
+          orderId: order.id,
+          action: 'Open the disruption panel for cause and reroute guidance',
+          timestamp: new Date().toISOString()
+        });
+      }
     }
 
     return alerts;

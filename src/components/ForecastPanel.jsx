@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function ForecastPanel({ apiBase }) {
   const [customers, setCustomers] = useState([]);
   const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [method, setMethod] = useState('movingAverage');
 
@@ -16,7 +18,9 @@ export default function ForecastPanel({ apiBase }) {
       const res = await fetch(`${apiBase}/customers`);
       const data = await res.json();
       setCustomers(data);
-      if (data.length > 0) setSelectedCustomer(data[0].id);
+      if (data.length > 0) {
+        setSelectedCustomer(data[0].id);
+      }
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -25,6 +29,9 @@ export default function ForecastPanel({ apiBase }) {
   };
 
   const generateForecast = async () => {
+    setError('');
+    setGenerating(true);
+
     try {
       const res = await fetch(`${apiBase}/forecast`, {
         method: 'POST',
@@ -35,46 +42,95 @@ export default function ForecastPanel({ apiBase }) {
           days: 30
         })
       });
+
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Unable to generate forecast');
+      }
+
       setForecast(data);
     } catch (err) {
       console.error('Error:', err);
+      setError(err.message || 'Error generating forecast');
+    } finally {
+      setGenerating(false);
     }
   };
 
-  if (loading) return <div className="panel"><p>Loading...</p></div>;
+  if (loading) {
+    return (
+      <div className="panel">
+        <h2 style={{ marginBottom: '20px' }}>Demand Forecasting</h2>
+        <div className="card" style={{ minHeight: '100px' }}>
+          <div className="skeleton skeleton-line"></div>
+          <div className="skeleton skeleton-line"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="panel">
-      <h2 style={{ marginBottom: '20px' }}>📈 Demand Forecasting</h2>
+      <h2 style={{ marginBottom: '20px' }}>Demand Forecasting</h2>
+
+      {error && (
+        <div className="card" style={{ marginBottom: '20px' }}>
+          <div className="alert danger" style={{ marginBottom: 0 }}>
+            <span className="alert-icon">!</span>
+            <div className="alert-content">
+              <strong>Forecast Error</strong>
+              <p>{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <h3>Forecast Configuration</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '12px', alignItems: 'end' }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr auto',
+            gap: '12px',
+            alignItems: 'end'
+          }}
+        >
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">Customer</label>
             <select
               className="form-input"
-              value={selectedCustomer}
+              value={selectedCustomer ?? ''}
               onChange={(e) => setSelectedCustomer(e.target.value)}
             >
-              {customers.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.name}
+                </option>
               ))}
             </select>
           </div>
+
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">Method</label>
-            <select className="form-input" value={method} onChange={(e) => setMethod(e.target.value)}>
+            <select
+              className="form-input"
+              value={method}
+              onChange={(e) => setMethod(e.target.value)}
+            >
               <option value="movingAverage">Moving Average</option>
               <option value="linear">Linear Regression</option>
               <option value="seasonal">Seasonal</option>
               <option value="ensemble">Ensemble</option>
             </select>
           </div>
+
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-primary" onClick={generateForecast}>
-              Generate Forecast
+            <button
+              className="btn btn-primary"
+              onClick={generateForecast}
+              disabled={generating || !selectedCustomer}
+            >
+              {generating ? 'Generating...' : 'Generate Forecast'}
             </button>
           </div>
         </div>
@@ -86,9 +142,14 @@ export default function ForecastPanel({ apiBase }) {
             <h3>Historical Data & Forecast</h3>
             <div className="grid-2">
               {Object.entries(forecast.forecast).map(([productId, forecastData]) => (
-                <div key={productId} style={{ padding: '16px', background: '#1a1a1a', borderRadius: '6px' }}>
+                <div
+                  key={productId}
+                  style={{ padding: '16px', background: '#1a1a1a', borderRadius: '6px' }}
+                >
                   <h4>{productId}</h4>
-                  <p style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>30-day forecast using {forecast.method}</p>
+                  <p style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>
+                    30-day forecast using {forecast.method}
+                  </p>
                   <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '150px' }}>
                     {forecastData.slice(0, 15).map((val, idx) => (
                       <div
@@ -104,7 +165,8 @@ export default function ForecastPanel({ apiBase }) {
                     ))}
                   </div>
                   <p style={{ fontSize: '12px', marginTop: '12px' }}>
-                    <strong>Avg:</strong> {(forecastData.reduce((a, b) => a + b, 0) / forecastData.length).toFixed(0)} units/day
+                    <strong>Avg:</strong>{' '}
+                    {(forecastData.reduce((a, b) => a + b, 0) / forecastData.length).toFixed(0)} units/day
                   </p>
                 </div>
               ))}
@@ -113,7 +175,15 @@ export default function ForecastPanel({ apiBase }) {
 
           <div className="card">
             <h3>Forecast Details</h3>
-            <pre style={{ background: '#1a1a1a', padding: '12px', borderRadius: '6px', overflow: 'auto', fontSize: '12px' }}>
+            <pre
+              style={{
+                background: '#1a1a1a',
+                padding: '12px',
+                borderRadius: '6px',
+                overflow: 'auto',
+                fontSize: '12px'
+              }}
+            >
               {JSON.stringify(forecast, null, 2)}
             </pre>
           </div>
@@ -123,13 +193,34 @@ export default function ForecastPanel({ apiBase }) {
       <div className="card">
         <h3>Forecasting Methods</h3>
         <ul style={{ listStyle: 'none', padding: 0 }}>
-          <li style={{ padding: '8px', marginBottom: '8px', borderLeft: '4px solid #0066cc', paddingLeft: '12px' }}>
+          <li
+            style={{
+              padding: '8px',
+              marginBottom: '8px',
+              borderLeft: '4px solid #0066cc',
+              paddingLeft: '12px'
+            }}
+          >
             <strong>Moving Average</strong> - Simple trend based on last N periods
           </li>
-          <li style={{ padding: '8px', marginBottom: '8px', borderLeft: '4px solid #00cc99', paddingLeft: '12px' }}>
+          <li
+            style={{
+              padding: '8px',
+              marginBottom: '8px',
+              borderLeft: '4px solid #00cc99',
+              paddingLeft: '12px'
+            }}
+          >
             <strong>Linear Regression</strong> - Captures linear trends in data
           </li>
-          <li style={{ padding: '8px', marginBottom: '8px', borderLeft: '4px solid #ffd93d', paddingLeft: '12px' }}>
+          <li
+            style={{
+              padding: '8px',
+              marginBottom: '8px',
+              borderLeft: '4px solid #ffd93d',
+              paddingLeft: '12px'
+            }}
+          >
             <strong>Seasonal</strong> - Based on weekly/monthly patterns
           </li>
           <li style={{ padding: '8px', borderLeft: '4px solid #ff6b6b', paddingLeft: '12px' }}>

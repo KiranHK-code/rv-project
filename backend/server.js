@@ -9,6 +9,7 @@ const { connectDB, initializeCollections, disconnectDB } = require('./db/mongoCo
 const { getDataManager } = require('./modules/mongoDataManager');
 const { buildDistanceMatrix } = require('./utils/distance');
 const KPITracker = require('./modules/kpiTracker');
+const GeminiAI = require('./modules/geminiAI');
 
 // Initialize app
 const app = express();
@@ -168,9 +169,14 @@ async function startServer() {
       const optimizeRoutes = require('./routes/optimize');
       const allocateRoutes = require('./routes/allocate');
       const disruptionRoutes = require('./routes/disruption');
+      const driverRoutes = require('./routes/driver');
       const dashboardRoutes = require('./routes/dashboard');
 
       const kpiTracker = new KPITracker();
+      const geminiAI = new GeminiAI({
+        apiKey: config.apis.gemini,
+        model: config.apis.geminiModel
+      });
       const warehouses = await dataManager.getWarehouses();
       const customers = await dataManager.getCustomers();
       const distanceMatrix = buildDistanceMatrix(warehouses, customers);
@@ -179,8 +185,19 @@ async function startServer() {
       app.use('/api/forecast', forecastRoutes(dataManager, kpiTracker, distanceMatrix, config));
       app.use('/api/optimize', optimizeRoutes(dataManager, kpiTracker, distanceMatrix, config));
       app.use('/api/allocate', allocateRoutes(dataManager, kpiTracker, distanceMatrix, config));
-      app.use('/api/disruption', disruptionRoutes(dataManager, kpiTracker, distanceMatrix, config));
+      app.use('/api/disruption', disruptionRoutes(dataManager, kpiTracker, distanceMatrix, config, geminiAI));
+      app.use('/api/driver', driverRoutes(dataManager, geminiAI));
       app.use('/api/dashboard', dashboardRoutes(dataManager, kpiTracker, distanceMatrix, config));
+      
+      // Initialize Gemini AI and add AI routes
+      const aiRoutes = require('./routes/ai');
+      app.use('/api/ai', aiRoutes(dataManager, geminiAI));
+      
+      console.log(
+        geminiAI.isConfigured
+          ? `✅ AI routes initialized with Gemini (${config.apis.geminiModel})`
+          : '⚠️ AI routes initialized in fallback mode - GEMINI_API_KEY not set'
+      );
       
       routesInitialized = true;
     }

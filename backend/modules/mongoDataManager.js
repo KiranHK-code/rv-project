@@ -5,6 +5,33 @@ const { getDB } = require('../db/mongoConnection');
 const fs = require('fs');
 const path = require('path');
 
+const PRODUCT_NAME_MAP = {
+  'PROD-001': 'Transmissions',
+  'PROD-002': 'Electric Drives',
+  'PROD-003': 'Air bags and Seat belts',
+  'PROD-004': 'Breaking and Safety Systems',
+  'PROD-005': 'Powertrain Components'
+};
+
+function normalizeCurrentStock(currentStock = {}) {
+  return Object.entries(currentStock).reduce((normalized, [productId, quantity]) => {
+    const displayName = PRODUCT_NAME_MAP[productId] || productId;
+    normalized[displayName] = quantity;
+    return normalized;
+  }, {});
+}
+
+function normalizeWarehouse(warehouse) {
+  if (!warehouse || !warehouse.currentStock) {
+    return warehouse;
+  }
+
+  return {
+    ...warehouse,
+    currentStock: normalizeCurrentStock(warehouse.currentStock)
+  };
+}
+
 class MongoDataManager {
   constructor() {
     this.db = null;
@@ -115,17 +142,24 @@ class MongoDataManager {
   // ========== WAREHOUSE OPERATIONS ==========
 
   async getWarehouses() {
-    return await this.db.collection('warehouses').find({}).toArray();
+    const warehouses = await this.db.collection('warehouses').find({}).toArray();
+    return warehouses.map(normalizeWarehouse);
   }
 
   async getWarehouse(warehouseId) {
-    return await this.db.collection('warehouses').findOne({ id: warehouseId });
+    const warehouse = await this.db.collection('warehouses').findOne({ id: warehouseId });
+    return normalizeWarehouse(warehouse);
   }
 
   async updateWarehouseStock(warehouseId, productId, newQuantity) {
     return await this.db.collection('warehouses').updateOne(
-      { id: warehouseId, 'currentStock.productId': productId },
-      { $set: { 'currentStock.$.quantity': newQuantity, updatedAt: new Date() } }
+      { id: warehouseId },
+      {
+        $set: {
+          [`currentStock.${productId}`]: newQuantity,
+          updatedAt: new Date()
+        }
+      }
     );
   }
 
@@ -161,13 +195,22 @@ class MongoDataManager {
   }
 
   async updateOrderStatus(orderId, status, allocatedWarehouse = null, cost = null) {
-    const updateData = {
-      status,
-      updatedAt: new Date()
-    };
-    
-    if (allocatedWarehouse) updateData.allocatedWarehouse = allocatedWarehouse;
-    if (cost) updateData.cost = cost;
+    const updateData = { updatedAt: new Date() };
+
+    if (status) {
+      updateData.status = status;
+    }
+
+    if (
+      allocatedWarehouse &&
+      typeof allocatedWarehouse === 'object' &&
+      !Array.isArray(allocatedWarehouse)
+    ) {
+      Object.assign(updateData, allocatedWarehouse);
+    } else {
+      if (allocatedWarehouse) updateData.allocatedWarehouse = allocatedWarehouse;
+      if (cost !== null && cost !== undefined) updateData.cost = cost;
+    }
 
     return await this.db.collection('orders').updateOne(
       { id: orderId },
@@ -193,11 +236,17 @@ class MongoDataManager {
   async getDemandHistory(customerId, productId = null) {
     const filter = { customerId };
     if (productId) filter.productId = productId;
-    
-    return await this.db.collection('demandHistory')
+
+    const records = await this.db.collection('demandHistory')
       .find(filter)
-      .sort({ date: 1 })
+      .sort({ day: 1, date: 1 })
       .toArray();
+
+    if (productId) {
+      return records.map((record) => record.quantity);
+    }
+
+    return records;
   }
 
   async getAllDemandHistory() {
@@ -246,21 +295,26 @@ class MongoDataManager {
         $group: {
           _id: null,
           totalCapacity: { $sum: '$capacity' },
-          totalStock: {
-            $sum: {
-              $sum: '$currentStock.quantity'
-            }
-          }
+          totalStock: { $sum: 0 }
         }
       }
     ]).toArray();
+
+    const warehouses = await this.getWarehouses();
+    const totalStock = warehouses.reduce(
+      (sum, warehouse) => sum + Object.values(warehouse.currentStock || {}).reduce((acc, qty) => acc + qty, 0),
+      0
+    );
 
     return {
       totalOrders: orderCount,
       totalWarehouses: warehouseCount,
       totalCustomers: customerCount,
       ordersByStatus: orderStats,
-      warehouse: warehouseStats[0] || { totalCapacity: 0, totalStock: 0 }
+      warehouse: {
+        totalCapacity: warehouseStats[0]?.totalCapacity || 0,
+        totalStock
+      }
     };
   }
 

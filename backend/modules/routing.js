@@ -5,7 +5,8 @@ const {
   calculateShippingCost, 
   calculateCO2Emissions,
   calculateDeliveryTime,
-  calculateWarehouseScore
+  calculateWarehouseScore,
+  calculateDeliveryDate
 } = require('../utils/distance');
 
 /**
@@ -27,6 +28,11 @@ function allocateOrderToWarehouse(
     };
   }
 
+  const effectiveCustomer = {
+    ...customer,
+    location: order.customerLocation || customer.location
+  };
+
   let bestWarehouse = null;
   let bestScore = -Infinity;
   let scoreDetails = {};
@@ -38,10 +44,11 @@ function allocateOrderToWarehouse(
 
     const score = calculateWarehouseScore(
       warehouse,
-      customer,
+      effectiveCustomer,
       order.quantity,
       distanceMatrix,
-      weights
+      weights,
+      order.productId
     );
 
     scoreDetails[warehouse.id] = score;
@@ -62,10 +69,22 @@ function allocateOrderToWarehouse(
   }
 
   // Calculate route details
-  const distance = distanceMatrix[bestWarehouse.id][customer.id];
+  const distance =
+    distanceMatrix?.[bestWarehouse.id]?.[effectiveCustomer.id] ??
+    calculateDistance(
+      bestWarehouse.location.lat,
+      bestWarehouse.location.lon,
+      effectiveCustomer.location.lat,
+      effectiveCustomer.location.lon
+    );
   const cost = calculateShippingCost(distance);
   const deliveryHours = calculateDeliveryTime(distance);
   const co2 = calculateCO2Emissions(distance);
+  const expectedDeliveryDate = calculateDeliveryDate(order.orderedDate || new Date().toISOString(), deliveryHours);
+  const lateRisk =
+    order.requiredDate && expectedDeliveryDate.getTime() > new Date(order.requiredDate).getTime()
+      ? 'at-risk'
+      : 'on-track';
 
   return {
     orderId: order.id,
@@ -81,12 +100,14 @@ function allocateOrderToWarehouse(
     },
     route: {
       from: bestWarehouse.location,
-      to: customer.location,
+      to: effectiveCustomer.location,
       distance: Math.round(distance * 100) / 100,
       deliveryHours: Math.round(deliveryHours * 100) / 100,
       deliveryDays: Math.ceil(deliveryHours / 24),
+      expectedDeliveryDate: expectedDeliveryDate.toISOString(),
       cost: Math.round(cost * 100) / 100,
-      co2Emissions: Math.round(co2 * 100) / 100
+      co2Emissions: Math.round(co2 * 100) / 100,
+      status: lateRisk
     },
     score: Math.round(bestScore * 10000) / 10000,
     scoreDetails: scoreDetails[bestWarehouse.id]

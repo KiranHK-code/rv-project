@@ -5,11 +5,11 @@
     "location": { "lat": 12.9716, "lon": 77.5946 },
     "capacity": 50000,
     "currentStock": {
-      "PROD-001": 8000,
-      "PROD-002": 6500,
-      "PROD-003": 4200,
-      "PROD-004": 7100,
-      "PROD-005": 3200
+      "Transmissions": 8000,
+      "Electric Drives": 6500,
+      "Air bags and Seat belts": 4200,
+      "Breaking and Safety Systems": 7100,
+      "Powertrain Components": 3200
     },
     "operationalCostPerDay": 2500,
     "failureRate": 0.01
@@ -20,11 +20,11 @@
     "location": { "lat": 12.5218, "lon": 76.8950 },
     "capacity": 60000,
     "currentStock": {
-      "PROD-001": 12000,
-      "PROD-002": 9000,
-      "PROD-003": 6500,
-      "PROD-004": 8000,
-      "PROD-005": 5800
+      "Transmissions": 12000,
+      "Electric Drives": 9000,
+      "Air bags and Seat belts": 6500,
+      "Breaking and Safety Systems": 8000,
+      "Powertrain Components": 5800
     },
     "operationalCostPerDay": 2800,
     "failureRate": 0.008
@@ -35,11 +35,11 @@
     "location": { "lat": 13.0827, "lon": 77.5697 },
     "capacity": 45000,
     "currentStock": {
-      "PROD-001": 6500,
-      "PROD-002": 5200,
-      "PROD-003": 7000,
-      "PROD-004": 4500,
-      "PROD-005": 6200
+      "Transmissions": 6500,
+      "Electric Drives": 5200,
+      "Air bags and Seat belts": 7000,
+      "Breaking and Safety Systems": 4500,
+      "Powertrain Components": 6200
     },
     "operationalCostPerDay": 2200,
     "failureRate": 0.009
@@ -50,11 +50,11 @@
     "location": { "lat": 12.3054, "lon": 76.6452 },
     "capacity": 40000,
     "currentStock": {
-      "PROD-001": 5000,
-      "PROD-002": 6800,
-      "PROD-003": 5200,
-      "PROD-004": 6100,
-      "PROD-005": 4200
+      "Transmissions": 5000,
+      "Electric Drives": 6800,
+      "Air bags and Seat belts": 5200,
+      "Breaking and Safety Systems": 6100,
+      "Powertrain Components": 4200
     },
     "operationalCostPerDay": 2000,
     "failureRate": 0.01
@@ -65,11 +65,11 @@
     "location": { "lat": 13.3409, "lon": 75.7600 },
     "capacity": 35000,
     "currentStock": {
-      "PROD-001": 4500,
-      "PROD-002": 3800,
-      "PROD-003": 5500,
-      "PROD-004": 3200,
-      "PROD-005": 4100
+      "Transmissions": 4500,
+      "Electric Drives": 3800,
+      "Air bags and Seat belts": 5500,
+      "Breaking and Safety Systems": 3200,
+      "Powertrain Components": 4100
     },
     "operationalCostPerDay": 1800,
     "failureRate": 0.007

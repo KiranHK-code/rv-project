@@ -85,15 +85,25 @@ function calculateWarehouseScore(
   customer,
   requiredQuantity,
   distanceMatrix,
-  weights = { distance: 0.3, stock: 0.5, cost: 0.2 }
+  weights = { distance: 0.3, stock: 0.5, cost: 0.2 },
+  productId = null
 ) {
+  const distance =
+    distanceMatrix?.[warehouse.id]?.[customer.id] ??
+    calculateDistance(
+      warehouse.location.lat,
+      warehouse.location.lon,
+      customer.location.lat,
+      customer.location.lon
+    );
+
   // Distance score (0-1, higher is better)
-  const distance = distanceMatrix[warehouse.id][customer.id];
   const maxDistance = 5000; // km
   const distanceScore = Math.max(0, 1 - (distance / maxDistance));
 
   // Stock availability score (0-1)
-  const availableStock = warehouse.currentStock[Object.keys(warehouse.currentStock)[0]] || 0; // Simplified
+  const stockKey = productId || Object.keys(warehouse.currentStock)[0];
+  const availableStock = warehouse.currentStock[stockKey] || 0;
   const stockScore = Math.min(1, availableStock / requiredQuantity);
 
   // Cost score (0-1, lower is better)

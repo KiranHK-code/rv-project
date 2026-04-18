@@ -22,7 +22,22 @@ export default function WarehousesPanel({ apiBase }) {
     }
   };
 
-  if (loading) return <div className="panel"><p>Loading warehouses...</p></div>;
+  if (loading) {
+    return (
+      <div className="panel">
+        <h2 style={{ marginBottom: '20px' }}>🏢 Warehouse Management</h2>
+        <div className="grid-2">
+          {[1, 2].map(i => (
+            <div key={i} className="card" style={{ minHeight: '300px' }}>
+              <div className="skeleton skeleton-line"></div>
+              <div className="skeleton skeleton-line"></div>
+              <div className="skeleton skeleton-line"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="panel">
@@ -30,26 +45,38 @@ export default function WarehousesPanel({ apiBase }) {
 
       <div className="grid-2">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <h3>Warehouses</h3>
-          {warehouses.map(wh => (
-            <div
-              key={wh.id}
-              onClick={() => setSelectedWh(wh)}
-              style={{
-                padding: '12px',
-                background: selectedWh?.id === wh.id ? '#0066cc' : '#2d2d2d',
-                border: '1px solid #444',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.3s'
-              }}
-            >
-              <strong>{wh.name}</strong>
-              <p style={{ fontSize: '12px', margin: '4px 0', opacity: 0.8 }}>
-                📍 Lat: {wh.location.lat.toFixed(2)}, Lon: {wh.location.lon.toFixed(2)}
-              </p>
+          <h3>📋 Warehouse List</h3>
+          {warehouses.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">📭</div>
+              <p className="empty-state-text">No warehouses found</p>
             </div>
-          ))}
+          ) : (
+            warehouses.map(wh => (
+              <div
+                key={wh.id}
+                onClick={() => setSelectedWh(wh)}
+                className="card"
+                style={{
+                  padding: '16px',
+                  cursor: 'pointer',
+                  border: selectedWh?.id === wh.id ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+                  background: selectedWh?.id === wh.id ? 'var(--primary-light)' : 'var(--card-bg)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                  <div>
+                    <strong>{wh.name}</strong>
+                    <p style={{ fontSize: '12px', margin: '4px 0', color: 'var(--text-secondary)' }}>
+                      📍 ID: {wh.id}
+                    </p>
+                  </div>
+                  <div style={{ fontSize: '24px' }}>📦</div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {selectedWh && (

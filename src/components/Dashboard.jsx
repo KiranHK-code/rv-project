@@ -4,6 +4,7 @@ export default function Dashboard({ apiBase }) {
   const [dashData, setDashData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -32,33 +33,59 @@ export default function Dashboard({ apiBase }) {
       setError(err.message || 'Unable to load dashboard data');
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
+  };
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    await fetchDashboardData();
   };
 
   if (loading) {
     return (
       <div className="panel">
-        <p>Loading dashboard...</p>
+        <h2 style={{ marginBottom: '20px' }}>📊 Dashboard Overview</h2>
+        <div className="grid-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="card" style={{ minHeight: '120px' }}>
+              <div className="skeleton skeleton-line"></div>
+              <div className="skeleton skeleton-line"></div>
+              <div className="skeleton skeleton-line"></div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="panel">
-      <h2 style={{ marginBottom: '20px' }}>Dashboard Overview</h2>
+      <h2 style={{ marginBottom: '20px' }}>📊 Dashboard Overview</h2>
 
       {error ? (
         <div className="card">
           <div className="alert danger" style={{ marginBottom: 0 }}>
-            <span className="alert-icon">!</span>
+            <span className="alert-icon">⚠️</span>
             <div className="alert-content">
               <strong>Dashboard unavailable</strong>
-              {error}
+              <p>{error}</p>
+              <button 
+                className="btn btn-primary btn-small" 
+                onClick={handleRetry}
+                disabled={retrying}
+                style={{ marginTop: '12px' }}
+              >
+                {retrying ? '⏳ Retrying...' : '🔄 Retry'}
+              </button>
             </div>
           </div>
         </div>
       ) : !dashData ? (
-        <p>No dashboard data available.</p>
+        <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>📭</div>
+          <p style={{ color: 'var(--text-secondary)' }}>No dashboard data available</p>
+        </div>
       ) : (
         <>
           <div className="grid-4">

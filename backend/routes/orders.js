@@ -3,6 +3,8 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
+const { allocateOrderToWarehouse } = require('../modules/routing');
+const { getDriverByWarehouse } = require('../constants/drivers');
 
 module.exports = (dataManager, kpiTracker, distanceMatrix, config) => {
   const isValidLocation = (location) => {
@@ -35,10 +37,17 @@ module.exports = (dataManager, kpiTracker, distanceMatrix, config) => {
         });
       }
 
+      const effectiveCustomerLocation = isValidLocation(userLocation) ? userLocation : customer.location;
+      const effectiveCustomerLocationName =
+        typeof userLocationName === 'string' && userLocationName.trim()
+          ? userLocationName.trim()
+          : `${customer.name}, ${customer.region || 'Customer region'}`;
+
       const order = {
         id: 'ORD-' + uuidv4().substring(0, 8).toUpperCase(),
         customerId,
-        customerLocation: customer.location,
+        customerLocation: effectiveCustomerLocation,
+        customerLocationName: effectiveCustomerLocationName,
         userLocation: isValidLocation(userLocation) ? userLocation : null,
         userLocationName: typeof userLocationName === 'string' ? userLocationName.trim() : '',
         productId,
@@ -50,6 +59,27 @@ module.exports = (dataManager, kpiTracker, distanceMatrix, config) => {
         route: null,
         disruptions: []
       };
+
+      const [warehouses, customers] = await Promise.all([
+        dataManager.getWarehouses(),
+        dataManager.getCustomers()
+      ]);
+      const allocation = allocateOrderToWarehouse(order, warehouses, customers, distanceMatrix);
+
+      if (allocation.success) {
+        const assignedDriver = getDriverByWarehouse(allocation.allocatedWarehouse.id);
+        order.status = 'assigned';
+        order.assignedWarehouse = allocation.allocatedWarehouse.id;
+        order.route = allocation.route;
+        order.driverAssignment = assignedDriver
+          ? {
+              driverId: assignedDriver.id,
+              driverName: assignedDriver.name,
+              warehouseId: assignedDriver.warehouseId,
+              assignedAt: new Date().toISOString()
+            }
+          : null;
+      }
 
       await dataManager.addOrder(order);
 

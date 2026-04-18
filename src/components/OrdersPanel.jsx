@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PRODUCTS } from '../constants/products';
 
 export default function OrdersPanel({ apiBase }) {
   const [orders, setOrders] = useState([]);
@@ -9,11 +10,12 @@ export default function OrdersPanel({ apiBase }) {
   const [userLocationName, setUserLocationName] = useState('');
   const [locationStatus, setLocationStatus] = useState('Fetching current location...');
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [customerInput, setCustomerInput] = useState('');
   const [formData, setFormData] = useState({
     customerId: '',
-    productId: 'PROD-001',
+    productId: PRODUCTS[0],
     quantity: 100,
-    requiredDate: new Date(Date.now() + 3*24*60*60*1000).toISOString().split('T')[0]
+    requiredDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   });
   const [filter, setFilter] = useState('all');
 
@@ -21,6 +23,10 @@ export default function OrdersPanel({ apiBase }) {
     fetchData();
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    fetchUserLocation();
   }, []);
 
   const fetchUserLocation = () => {
@@ -66,9 +72,9 @@ export default function OrdersPanel({ apiBase }) {
               address.city || address.town || address.village,
               address.state,
               address.country
-            ].filter(Boolean).join(', ') ||
-            data.display_name ||
-            '';
+            ]
+              .filter(Boolean)
+              .join(', ') || data.display_name || '';
 
           if (placeName) {
             setUserLocationName(placeName);
@@ -103,18 +109,16 @@ export default function OrdersPanel({ apiBase }) {
     );
   };
 
-  useEffect(() => {
-    fetchUserLocation();
-  }, []);
-
   const fetchData = async () => {
     try {
       const [ordersRes, customersRes] = await Promise.all([
         fetch(`${apiBase}/orders`),
         fetch(`${apiBase}/customers`)
       ]);
+
       const ordersData = await ordersRes.json();
       const customersData = await customersRes.json();
+
       setOrders(ordersData.orders || []);
       setCustomers(customersData);
     } catch (err) {
@@ -124,10 +128,30 @@ export default function OrdersPanel({ apiBase }) {
     }
   };
 
+  const handleCustomerInput = (value) => {
+    const matchedCustomer = customers.find(
+      (customer) => customer.name.toLowerCase() === value.trim().toLowerCase()
+    );
+
+    setCustomerInput(value);
+    setFormData((prev) => ({
+      ...prev,
+      customerId: matchedCustomer ? matchedCustomer.id : ''
+    }));
+    setMessage('');
+  };
+
   const handleCreateOrder = async (e) => {
     e.preventDefault();
+    setMessage('');
+
     if (!formData.customerId) {
-      alert('Please select a customer');
+      setMessage('Please choose a valid customer name');
+      return;
+    }
+
+    if (formData.quantity < 1) {
+      setMessage('Quantity must be at least 1');
       return;
     }
 
@@ -141,73 +165,119 @@ export default function OrdersPanel({ apiBase }) {
           userLocationName
         })
       });
+
       const result = await res.json();
       if (!res.ok) {
         throw new Error(result.error || 'Unable to create order');
       }
-      if (res.ok) {
-        setFormData(prev => ({ ...prev, quantity: 100 }));
-        setMessage('Order created successfully.');
-        fetchData();
-      }
+
+      setFormData((prev) => ({
+        ...prev,
+        quantity: 100,
+        customerId: '',
+        productId: PRODUCTS[0],
+        requiredDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      }));
+      setCustomerInput('');
+      setMessage('Order created successfully!');
+      fetchData();
     } catch (err) {
       console.error('Error creating order:', err);
-      setMessage(err.message || 'Error creating order.');
+      setMessage(err.message || 'Error creating order');
     }
   };
 
-  const filteredOrders = filter === 'all' ? orders : orders.filter(o => o.status === filter);
-  const selectedCustomer = customers.find(c => c.id === formData.customerId);
+  const filteredOrders = filter === 'all' ? orders : orders.filter((order) => order.status === filter);
+  const selectedCustomer = customers.find((customer) => customer.id === formData.customerId);
+
   const formatLocation = (location) => {
-    if (!location) return '-';
+    if (!location) {
+      return '-';
+    }
+
     return `${location.lat.toFixed(4)}, ${location.lon.toFixed(4)}`;
   };
-  const displayUserLocation = userLocationName || formatLocation(userLocation);
 
-  if (loading) return <div className="panel"><p>Loading orders...</p></div>;
+  const displayUserLocation = userLocationName || formatLocation(userLocation);
+  const getCustomerLocationLabel = (customer) => {
+    if (!customer) {
+      return '';
+    }
+
+    return `${customer.name}, ${customer.region || 'Customer region'}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="panel">
+        <p>Loading orders...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="panel">
-      <h2 style={{ marginBottom: '20px' }}>📦 Order Management</h2>
+      <h2 style={{ marginBottom: '20px' }}>Order Management</h2>
 
-      {/* Create Order Form */}
       <div className="card">
         <h3>Create New Order</h3>
-        <form onSubmit={handleCreateOrder} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1.2fr 1.2fr auto', gap: '12px', alignItems: 'end' }}>
+        <form
+          onSubmit={handleCreateOrder}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr 1fr 1.2fr 1.2fr auto',
+            gap: '12px',
+            alignItems: 'end'
+          }}
+        >
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label">Customer</label>
-            <select
+            <label className="form-label">Customer Name</label>
+            <input
+              type="text"
               className="form-input"
-              value={formData.customerId}
-              onChange={(e) => {
-                setFormData({ ...formData, customerId: e.target.value });
-                setMessage('');
-              }}
-            >
-              <option value="">Select Customer</option>
-              {customers.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+              list="customer-name-options"
+              value={customerInput}
+              onChange={(e) => handleCustomerInput(e.target.value)}
+              placeholder="Type customer name"
+            />
+            <datalist id="customer-name-options">
+              {customers.map((customer) => (
+                <option key={customer.id} value={customer.name} />
               ))}
-            </select>
+            </datalist>
           </div>
+
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">Product</label>
-            <select className="form-input" value={formData.productId} onChange={(e) => setFormData({ ...formData, productId: e.target.value })}>
-              {['PROD-001', 'PROD-002', 'PROD-003', 'PROD-004', 'PROD-005'].map(p => (
-                <option key={p} value={p}>{p}</option>
+            <select
+              className="form-input"
+              value={formData.productId}
+              onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+            >
+              {PRODUCTS.map((product) => (
+                <option key={product} value={product}>
+                  {product}
+                </option>
               ))}
             </select>
           </div>
+
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">Quantity</label>
             <input
               type="number"
               className="form-input"
               value={formData.quantity}
-              onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  quantity: Number.parseInt(e.target.value, 10) || 0
+                })
+              }
               min="1"
             />
           </div>
+
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">Required Date</label>
             <input
@@ -217,16 +287,18 @@ export default function OrdersPanel({ apiBase }) {
               onChange={(e) => setFormData({ ...formData, requiredDate: e.target.value })}
             />
           </div>
+
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">Customer Location</label>
             <input
               type="text"
               className="form-input"
-              value={selectedCustomer ? formatLocation(selectedCustomer.location) : ''}
-              placeholder="Select a customer"
+              value={getCustomerLocationLabel(selectedCustomer)}
+              placeholder="Select a valid customer"
               readOnly
             />
           </div>
+
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">Your Live Location</label>
             <input
@@ -237,8 +309,12 @@ export default function OrdersPanel({ apiBase }) {
               readOnly
             />
           </div>
-          <button type="submit" className="btn btn-primary">Create</button>
+
+          <button type="submit" className="btn btn-primary">
+            Create
+          </button>
         </form>
+
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '10px' }}>
           <p style={{ color: userLocation ? '#51cf66' : '#ffd93d', margin: 0 }}>{locationStatus}</p>
           <button
@@ -250,6 +326,7 @@ export default function OrdersPanel({ apiBase }) {
             {isFetchingLocation ? 'Fetching...' : 'Retry Location'}
           </button>
         </div>
+
         {message && (
           <p style={{ marginTop: '12px', color: message.includes('successfully') ? '#51cf66' : '#ff6b6b' }}>
             {message}
@@ -257,20 +334,18 @@ export default function OrdersPanel({ apiBase }) {
         )}
       </div>
 
-      {/* Filter */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-        {['all', 'pending', 'assigned', 'shipped', 'delivered', 'failed'].map(s => (
+        {['all', 'pending', 'assigned', 'out_for_delivery', 'shipped', 'delivered', 'failed'].map((status) => (
           <button
-            key={s}
-            className={`btn ${filter === s ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setFilter(s)}
+            key={status}
+            className={`btn ${filter === status ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setFilter(status)}
           >
-            {s.charAt(0).toUpperCase() + s.slice(1)}
+            {status.charAt(0).toUpperCase() + status.slice(1)}
           </button>
         ))}
       </div>
 
-      {/* Orders Table */}
       <div className="card">
         <h3>Orders ({filteredOrders.length})</h3>
         <table className="table">
@@ -288,15 +363,19 @@ export default function OrdersPanel({ apiBase }) {
             </tr>
           </thead>
           <tbody>
-            {filteredOrders.map(order => (
+            {filteredOrders.map((order) => (
               <tr key={order.id}>
-                <td><strong>{order.id}</strong></td>
-                <td>{customers.find(c => c.id === order.customerId)?.name || 'N/A'}</td>
+                <td>
+                  <strong>{order.id}</strong>
+                </td>
+                <td>{customers.find((customer) => customer.id === order.customerId)?.name || 'N/A'}</td>
                 <td>{order.productId}</td>
                 <td>{order.quantity}</td>
-                <td>{formatLocation(order.customerLocation || customers.find(c => c.id === order.customerId)?.location)}</td>
+                <td>{order.customerLocationName || getCustomerLocationLabel(customers.find((customer) => customer.id === order.customerId)) || '-'}</td>
                 <td>{order.userLocationName || formatLocation(order.userLocation)}</td>
-                <td><span className={`badge badge-${getStatusColor(order.status)}`}>{order.status}</span></td>
+                <td>
+                  <span className={`badge badge-${getStatusColor(order.status)}`}>{order.status}</span>
+                </td>
                 <td>{order.assignedWarehouse || '-'}</td>
                 <td>{order.route ? `$${order.route.cost.toFixed(2)}` : '-'}</td>
               </tr>
@@ -309,6 +388,14 @@ export default function OrdersPanel({ apiBase }) {
 }
 
 function getStatusColor(status) {
-  const colors = { pending: 'warning', assigned: 'info', shipped: 'primary', delivered: 'success', failed: 'danger' };
+  const colors = {
+    pending: 'warning',
+    assigned: 'info',
+    out_for_delivery: 'primary',
+    shipped: 'primary',
+    delivered: 'success',
+    failed: 'danger'
+  };
+
   return colors[status] || 'primary';
 }

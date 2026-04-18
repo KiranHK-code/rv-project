@@ -71,9 +71,9 @@ module.exports = (dataManager, config) => {
     // Get forecast data for this warehouse's served customers
     const demandForecast = {};
     for (const customer of dataManager.customers) {
-      const demand = dataManager.getDemandHistory(customer.id, 'PROD-001');
+      const demand = dataManager.getDemandHistory(customer.id, 'Transmissions');
       if (demand && demand.length > 0) {
-        demandForecast['PROD-001'] =  demand.slice(-30);
+        demandForecast.Transmissions = demand.slice(-30);
       }
     }
 

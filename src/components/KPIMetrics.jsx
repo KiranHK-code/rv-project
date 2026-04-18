@@ -35,17 +35,33 @@ export default function KPIMetrics({ apiBase }) {
     }
   };
 
-  if (loading) return <div className="panel"><p>Loading KPI metrics...</p></div>;
+  if (loading) {
+    return (
+      <div className="panel">
+        <h2 style={{ marginBottom: '20px' }}>📊 KPI Metrics and Performance</h2>
+        <div className="grid-2">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="card" style={{ minHeight: '200px' }}>
+              <div className="skeleton skeleton-line" style={{ marginBottom: '12px' }}></div>
+              <div className="skeleton skeleton-line" style={{ marginBottom: '12px', width: '80%' }}></div>
+              <div className="skeleton skeleton-line"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
       <div className="panel">
+        <h2 style={{ marginBottom: '20px' }}>📊 KPI Metrics and Performance</h2>
         <div className="card">
           <div className="alert danger" style={{ marginBottom: 0 }}>
-            <span className="alert-icon">!</span>
+            <span className="alert-icon">⚠️</span>
             <div className="alert-content">
               <strong>KPI metrics unavailable</strong>
-              {error}
+              <p>{error}</p>
             </div>
           </div>
         </div>
@@ -60,7 +76,7 @@ export default function KPIMetrics({ apiBase }) {
   };
 
   return (
-    <div className="panel">
+    <div className="panel">📊 
       <h2 style={{ marginBottom: '20px' }}>KPI Metrics and Performance</h2>
 
       <div className="grid-2">
